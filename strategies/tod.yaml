@@ -1,0 +1,41 @@
+identity:
+  name: "TOD"
+  author: "Dify"
+  label:
+    en_US: "InformationCollection"
+    zh_Hans: "信息收集"
+description:
+  en_US: "A dialogue strategy for information collection through multi-turn conversations"
+  zh_Hans: "通过多轮对话收集信息的对话策略"
+parameters:
+  - name: "model"
+    type: "model-selector"
+    scope: "llm"
+    required: true
+    label:
+      en_US: "Model"
+      zh_Hans: "模型"
+  - name: "information_schema"
+    type: "string"
+    required: true
+    label:
+      en_US: "Information Schema"
+      zh_Hans: "信息集合 Schema"
+  - name: "query"
+    type: "string"
+    required: true
+    label:
+      en_US: "User Query"
+      zh_Hans: "用户输入"
+  - name: "storage_key"
+    type: "string"
+    required: true
+    label:
+      en_US: "Storage Key"
+      zh_Hans: "存储键值"
+    description:
+      en_US: "The key to store/retrieve dialogue state"
+      zh_Hans: "用于存储和获取对话状态的键值"
+extra:
+  python:
+    source: "strategies/tod.py"

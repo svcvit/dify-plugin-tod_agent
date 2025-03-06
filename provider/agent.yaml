@@ -1,0 +1,15 @@
+identity:
+  author: svcvit
+  name: agent
+  label:
+    en_US: Dialogue
+    zh_Hans: 对话
+  description:
+    en_US: Store conversation context information for multi-turn dialogue memory processing
+    zh_Hans: 存储对话上下文信息，用于多轮对话记忆处理
+  icon: icon.svg
+strategies:
+  - strategies/tod.yaml
+extra:
+  python:
+    source: provider/agent.py

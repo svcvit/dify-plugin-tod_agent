@@ -1,0 +1,39 @@
+version: 0.0.2
+type: plugin
+author: "svcvit"
+name: "agent"
+label:
+  en_US: "Dialogue Agent"
+  zh_Hans: "对话 Agent"
+icon: icon.svg
+description:
+  en_US: "An advanced dialogue agent optimized for conversational scenarios"
+  zh_Hans: "针对对话场景优化的Agent策略，例如：多轮对话、上下文理解、信息收集等"
+tags:
+  - "agent"
+resource:
+  memory: 1048576
+  permission:
+    tool:
+      enabled: true
+    model:
+      enabled: true
+      llm: true
+    storage:
+      enabled: true
+      size: 1073741824
+plugins:
+  agent_strategies:
+    - "provider/agent.yaml"
+meta:
+  version: 0.0.2
+  arch:
+    - "amd64"
+    - "arm64"
+  runner:
+    language: "python"
+    version: "3.12"
+    entrypoint: "main"
+created_at: 2025-02-28T18:18:18.000000+08:00
+privacy: PRIVACY.md
+verified: false
