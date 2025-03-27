@@ -10,6 +10,7 @@ identity:
   icon: icon.svg
 strategies:
   - strategies/tod.yaml
+  - strategies/mtd.yaml
 extra:
   python:
     source: provider/agent.py

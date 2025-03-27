@@ -1,0 +1,41 @@
+identity:
+  name: "MTD"
+  author: "Dify"
+  label:
+    en_US: "MultiTurnConversation"
+    zh_Hans: "多轮对话"
+description:
+  en_US: "A dialogue strategy for managing multi-turn conversations with context awareness"
+  zh_Hans: "一个支持上下文感知的多轮对话策略"
+parameters:
+  - name: "model"
+    type: "model-selector"
+    scope: "llm"
+    required: true
+    label:
+      en_US: "Model"
+      zh_Hans: "模型"
+  - name: "instruction"
+    type: "string"
+    required: true
+    label:
+      en_US: "Instruction"
+      zh_Hans: "指令"
+  - name: "query"
+    type: "string"
+    required: true
+    label:
+      en_US: "User Query"
+      zh_Hans: "用户输入"
+  - name: "storage_key"
+    type: "string"
+    required: true
+    label:
+      en_US: "Storage Key"
+      zh_Hans: "存储键值"
+    description:
+      en_US: "The key to store/retrieve dialogue state"
+      zh_Hans: "用于存储和获取对话状态的键值"
+extra:
+  python:
+    source: "strategies/mtd.py"

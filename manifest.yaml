@@ -1,4 +1,4 @@
-version: 0.0.2
+version: 0.0.3
 type: plugin
 author: "svcvit"
 name: "agent"
@@ -26,7 +26,7 @@ plugins:
   agent_strategies:
     - "provider/agent.yaml"
 meta:
-  version: 0.0.2
+  version: 0.0.3
   arch:
     - "amd64"
     - "arm64"

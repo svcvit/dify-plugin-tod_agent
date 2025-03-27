@@ -2,47 +2,15 @@ import json
 import time
 from typing import Any, Generator, Optional
 
-from pydantic import BaseModel, field_validator
-
 from dify_plugin.entities.agent import AgentInvokeMessage
 from dify_plugin.entities.model.llm import LLMModelConfig, LLMUsage
-from dify_plugin.entities.model.message import (
-    SystemPromptMessage,
-    UserPromptMessage,
-)
-from dify_plugin.interfaces.agent import AgentStrategy, AgentModelConfig
+from dify_plugin.entities.model.message import SystemPromptMessage, UserPromptMessage
+from dify_plugin.interfaces.agent import AgentStrategy
 from dify_plugin.entities.tool import ToolInvokeMessage, LogMetadata
 
-
-class DialogueField(BaseModel):
-    name: str
-    question: str
-    required: bool = True
-    value: Optional[str] = None
-
-
-class DialogueState(BaseModel):
-    current_field_index: int = 0
-    fields: list[DialogueField]
-    completed: bool = False
-
-
-class TODParams(BaseModel):
-    information_schema: str
-    query: str
-    model: AgentModelConfig
-    storage_key: str
-
-    @field_validator("information_schema")
-    def validate_information_schema(cls, v):
-        try:
-            schema = json.loads(v)
-            if not isinstance(schema, dict) or "fields" not in schema:
-                raise ValueError("Invalid schema format")
-            return v
-        except json.JSONDecodeError:
-            raise ValueError("Invalid JSON format")
-
+from .models import DialogueState, DialogueField, TODParams
+from .utils import try_parse_json, increase_usage
+from .prompts import tod_system_prompt, tod_extract_prompt
 
 class TaskOrientedDialogueStrategy(AgentStrategy):
     def __init__(self, session):
@@ -99,51 +67,8 @@ class TaskOrientedDialogueStrategy(AgentStrategy):
         except Exception:
             pass
 
-    def _get_system_prompt(self) -> str:
-        return """You are a professional conversation assistant. Your task is to evaluate whether the user's response meets the requirements of the current question.
-
-Please evaluate according to the following rules:
-1. If the user's answer fully meets the question requirements, please directly reply with the user's answer
-2. If the user's answer contains both the answer to the current question and answers to other questions, it is also considered valid, please directly reply with the user's answer
-3. If the user is greeting or making small talk, please reply with "INVALID: User is greeting or making small talk"
-4. If the user's answer is incomplete or unclear, please reply with "INVALID: " followed by the specific reason
-5. If the user's answer is irrelevant to the question, please reply with "INVALID: Answer is irrelevant to the question"
-
-Examples:
-Q: What is your contact number?
-A: Hello
-Response: INVALID: User is greeting or making small talk
-
-Q: What is your contact number?
-A: My phone
-Response: INVALID: Answer is incomplete, need specific number
-
-Q: What is your contact number?
-A: 13812345678
-Response: 13812345678
-
-Q: Where do you want to travel?
-A: I want to spend 30,000 to travel to Japan for 5 days
-Response: Japan"""
-
     def _extract_answers(self, user_input: str, parent_log=None) -> Generator[AgentInvokeMessage, None, None]:
-        extract_prompt = f"""Please extract all relevant information from the user's response and return it in JSON format.  Return the extracted information in the same language as the user's input.
-
-    Rules:
-    1. Carefully analyze user input to extract information related to all questions
-    2. Even if the user only answered one question, try to infer answers to other questions from the context
-    3. If certain information cannot be extracted or inferred, do not include that field
-    4. The return format must be valid JSON
-
-    Current information to collect:
-    {[{"name": field.name, "question": field.question} for field in self.dialogue_state.fields]}
-
-    User input: {user_input}
-
-    Please return in JSON format, for example:
-    {{"destination": "Japan", "duration": "5 days", "budget": "30,000"}}
-
-    Note: Even if the user only answered some questions, please try to extract all relevant information.  The output language MUST match the user's input language."""
+        extract_prompt = tod_extract_prompt(self.dialogue_state.fields, user_input)
 
         extract_started_at = time.perf_counter()
         extract_log = self.create_log_message(
@@ -169,10 +94,9 @@ Response: Japan"""
             ],
             stream=False
         )
-        extracted_data = self._try_parse_json(response.message.content)
+        extracted_data = try_parse_json(response.message.content)
 
-        # Move increase_usage here, after the LLM call in extraction
-        self.increase_usage(self.llm_usage, response.usage)
+        increase_usage(self.llm_usage, response.usage)
 
         finish_log = self.finish_log_message(
             log=extract_log,
@@ -189,22 +113,6 @@ Response: Japan"""
         )
         yield finish_log
         yield extracted_data
-
-    def _try_parse_json(self, content: str) -> dict:
-        try:
-            extracted_data = json.loads(content)
-            return extracted_data
-        except json.JSONDecodeError:
-            try:
-                import re
-
-                json_match = re.search(r"\{.*\}", content, re.DOTALL)
-                if json_match:
-                    extracted_data = json.loads(json_match.group(0))
-                    return extracted_data
-            except Exception:
-                pass
-            return {}
 
     def _invoke(self, parameters: dict[str, Any]) -> Generator[AgentInvokeMessage, None, None]:
         params = TODParams(**parameters)
@@ -284,7 +192,7 @@ Response: Japan"""
 Current question: {current_field.question}
 User answer: {params.query}"""
 
-        system_message = SystemPromptMessage(content=self._get_system_prompt())
+        system_message = SystemPromptMessage(content=tod_system_prompt())
 
         validation_started_at = time.perf_counter()
         validation_log = self.create_log_message(
@@ -314,8 +222,7 @@ User answer: {params.query}"""
         )
 
         is_valid = self._is_valid_answer(response.message.content)
-        # Move increase_usage here, after the LLM call in validation
-        self.increase_usage(self.llm_usage, response.usage)
+        increase_usage(self.llm_usage, response.usage)
 
         yield self.finish_log_message(
             log=validation_log,
@@ -394,7 +301,6 @@ User answer: {params.query}"""
                     LogMetadata.TOTAL_TOKENS: self.llm_usage["usage"].total_tokens if self.llm_usage["usage"] else 0,
                 }
 
-                # 在结束前也添加执行元数据的输出
                 yield self.create_json_message(
                     {
                         "execution_metadata": {
@@ -499,16 +405,3 @@ User answer: {params.query}"""
         for field in self.dialogue_state.fields:
             summary += f"{field.question} {field.value}\n"
         return summary.strip()
-
-    def increase_usage(
-        self, llm_usage: dict[str, Optional[LLMUsage]], usage: Optional[LLMUsage]
-    ) -> None:
-        if usage is None:
-            return
-        if llm_usage["usage"] is None:
-            llm_usage["usage"] = usage
-        else:
-            llm_usage["usage"].prompt_tokens += usage.prompt_tokens
-            llm_usage["usage"].completion_tokens += usage.completion_tokens
-            llm_usage["usage"].total_tokens += usage.total_tokens
-            llm_usage["usage"].total_price += usage.total_price
