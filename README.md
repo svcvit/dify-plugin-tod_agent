@@ -1,13 +1,14 @@
 # Dialogue Agent
 
 **Author:** [svcvit](https://github.com/svcvit)
-**Version:** 0.0.3
+**Repository:** [dify-plugin-tod_agent](https://github.com/svcvit/dify-plugin-tod_agent)
+**Version:** 0.0.4
 
 ### Description
 
-![](./snapshots/tod.jpg)
+![](./_assets/tod.jpg)
 
-![](./snapshots/mtd.jpg)
+![](./_assets/mtd.jpg)
 
 A powerful task-oriented dialogue agent that can collect information through structured conversations. It supports dynamic field validation, multi-field information extraction, and state management. The agent now includes two dialogue strategies: TOD (Task-Oriented Dialogue) for information collection and MTD (Multi-Turn Dialogue) for general conversations.
 
@@ -110,6 +111,9 @@ The agent supports two dialogue strategies:
    - Example: `"mtd-conversation-123"`
 
 ### Changelog
+
+#### v0.0.4
+- Updated dify_plugin dependency requirement to `>=0.1.0,<0.2.0`
 
 #### v0.0.3
 - Added MTD (Multi-Turn Dialogue) strategy support
